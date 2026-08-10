@@ -1,0 +1,32 @@
+[
+  {
+    "id": "FIELD-HISTORY/003",
+    "year": "MAY 2026 - PRESENT",
+    "role": "SOFTWARE DEVELOPER",
+    "comp": "MOUNTAINVIEW BUSINESS SOLUTION INC.",
+    "type": "FULL-TIME",
+    "img": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&q=80",
+    "desc": "Developed and maintained full-stack internal tooling and database scripts using ASP.NET, MSSQL, and PowerBuilder.",
+    "refs": []
+  },
+  {
+    "id": "FIELD-HISTORY/002",
+    "year": "DEC 2025 - FEB 2026",
+    "role": "SOFTWARE ENG. INTERN",
+    "comp": "BLANKWORKS STUDIO",
+    "type": "INTERNSHIP",
+    "img": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80",
+    "desc": "Engineered high-performance notification systems with BullMQ and MongoDB, resolved critical billing bugs in production, and modernized legacy React/Next.js codebases.",
+    "refs": []
+  },
+  {
+    "id": "FIELD-HISTORY/001",
+    "year": "NOV 2024 - APR 2026",
+    "role": "WEB DEVELOPER",
+    "comp": "FREELANCE",
+    "type": "CONTRACT",
+    "img": "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=600&q=80",
+    "desc": "Delivered SEO optimizations for lifestyle blogs and built custom Shopify e-commerce solutions with automated Printify fulfillment.",
+    "refs": []
+  }
+]

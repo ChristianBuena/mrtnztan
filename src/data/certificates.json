@@ -1,0 +1,29 @@
+[
+  {
+    "n": "01",
+    "name": "OUTSTANDING PRESENTER AWARD",
+    "issuer": "TECHNO EXPO 2025",
+    "year": "2025",
+    "sig": 1,
+    "img": "../public/certs/4.png",
+    "desc": "Received the Outstanding Presenter Award for exceptional presentation skills at the Techno Expo 2025."
+  },
+  {
+    "n": "02",
+    "name": "SEO CERTIFIED",
+    "issuer": "HUBSPOT ACADEMY",
+    "year": "2026",
+    "sig": 2,
+    "img": "../public/certs/5.png",
+    "desc": "Mastered SEO strategies including keyword research, on-page optimization, and technical SEO to improve search engine rankings and drive organic traffic."
+  },
+  {
+    "n": "03",
+    "name": "PEER CODING SESSION MENTOR",
+    "issuer": "CSS",
+    "year": "2026",
+    "sig": 3,
+    "img": "../public/certs/9.png",
+    "desc": "Led peer coding sessions to help students with coding assignments and projects."
+  }
+]

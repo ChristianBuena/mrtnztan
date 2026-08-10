@@ -1,0 +1,109 @@
+[
+  {
+    "id": "BUILT/002",
+    "num": "002",
+    "name": "SIP WEST",
+    "type": "WEB APPLICATION",
+    "year": "2025",
+    "status": "COMPLETED",
+    "img": "../public/projects/sipwests.png",
+    "github": "https://github.com/ChristianBuena/sipwest-theme",
+    "live": "https://sipwest.com",
+    "challenge": "University departments needed a unified system to track physical assets across campuses without relying on fragmented spreadsheets.",
+    "solution": "A centralized dashboard and scanning interface, built to solve scheduling problems and manage physical assets efficiently across multiple campuses.",
+    "stack": [
+      {
+        "name": "Lead Developer",
+        "color": "bg-blue-400"
+      },
+      {
+        "name": "Liquid",
+        "color": "bg-teal-400"
+      },
+      {
+        "name": "Shopify",
+        "color": "bg-blue-600"
+      },
+      {
+        "name": "Web Design",
+        "color": "bg-sky-400"
+      }
+    ],
+    "origins": [
+      {
+        "id": "LAB/003",
+        "label": "LAB / 003"
+      },
+      {
+        "id": "FIELD-HISTORY/002",
+        "label": "FIELD HISTORY / 002"
+      }
+    ]
+  },
+  {
+    "id": "BUILT/003",
+    "num": "003",
+    "name": "ENDING",
+    "type": "NARRATIVE GAME",
+    "year": "2025",
+    "status": "ONGOING",
+    "img": "../public/projects/ending.png",
+    "github": "https://github.com/ChristianBuena/ending",
+    "live": "#",
+    "challenge": "Creating an immersive, choice-driven narrative system that runs smoothly in the browser while maintaining complex state branches and save files.",
+    "solution": "Designed a state-machine driven dialog engine with custom local storage serialization and pixel-art sprite rendering in Canvas.",
+    "stack": [
+      {
+        "name": "Game Developer",
+        "color": "bg-blue-400"
+      },
+      {
+        "name": "C#",
+        "color": "bg-amber-400"
+      },
+      {
+        "name": "UNITY Engine",
+        "color": "bg-sky-400"
+      }
+    ],
+    "origins": [
+      {
+        "id": "LAB/001",
+        "label": "LAB / 001"
+      }
+    ]
+  },
+  {
+    "id": "BUILT/004",
+    "num": "004",
+    "name": "EMOTION QUEST",
+    "type": "SCHOOL PROJECT",
+    "year": "2024",
+    "status": "COMPLETED",
+    "img": "../public/projects/emotionquest.png",
+    "github": "https://github.com/ChristianBuena/EmotionQuest",
+    "live": "#",
+    "challenge": "A gamified application that educates children about the importance of emotional regulation and expression.",
+    "solution": "Created a browser-based game featuring interactive mini-games, a virtual pet system, and progress tracking to encourage emotional awareness and healthy coping mechanisms.",
+    "stack": [
+      {
+        "name": "Lead Developer",
+        "color": "bg-blue-400"
+      },
+      {
+        "name": "Godot Engine",
+        "color": "bg-orange-400"
+      },
+      {
+        "name": "GDScript",
+        "color": "bg-sky-400"
+      }
+    ],
+    "origins": [
+      {
+        "id": "FIELD-HISTORY/001",
+        "label": "FIELD HISTORY / 001"
+      }
+    ]
+  }
+]
