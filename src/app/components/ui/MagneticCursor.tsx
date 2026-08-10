@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, useMotionValue, useSpring } from "motion/react";
 
 const reduced =
@@ -13,13 +13,13 @@ export const MagneticCursor: React.FC = () => {
   const [clicked, setClicked] = useState(false);
   const [hidden, setHidden] = useState(false);
 
-  // Outer "follower" lags behind with spring
-  const springX = useSpring(cursorX, { stiffness: 120, damping: 18, mass: 0.6 });
-  const springY = useSpring(cursorY, { stiffness: 120, damping: 18, mass: 0.6 });
+  // Fast snappy springs
+  const springX = useSpring(cursorX, { stiffness: 450, damping: 24, mass: 0.2 });
+  const springY = useSpring(cursorY, { stiffness: 450, damping: 24, mass: 0.2 });
 
-  // Inner dot follows instantly
-  const dotX = useSpring(cursorX, { stiffness: 800, damping: 30 });
-  const dotY = useSpring(cursorY, { stiffness: 800, damping: 30 });
+  // Instant inner dot
+  const dotX = useSpring(cursorX, { stiffness: 1200, damping: 35 });
+  const dotY = useSpring(cursorY, { stiffness: 1200, damping: 35 });
 
   useEffect(() => {
     if (reduced) return;
@@ -41,13 +41,8 @@ export const MagneticCursor: React.FC = () => {
     document.addEventListener("mouseleave", leave);
     document.addEventListener("mouseenter", enter);
 
-    // Detect hoverable elements
     const interactables = "a, button, [role=button], input, select, textarea, label, [data-cursor-hover]";
     
-    const handleEnter = () => setHovered(true);
-    const handleLeave = () => setHovered(false);
-
-    // Use event delegation via document
     const onOver = (e: MouseEvent) => {
       if ((e.target as Element)?.closest(interactables)) {
         setHovered(true);
@@ -72,7 +67,7 @@ export const MagneticCursor: React.FC = () => {
 
   return (
     <>
-      {/* Outer ring — lagging follower */}
+      {/* Outer spinning dashed reticle ring — always accent color like display button */}
       <motion.div
         style={{
           x: springX,
@@ -83,21 +78,52 @@ export const MagneticCursor: React.FC = () => {
           top: 0,
           left: 0,
           borderRadius: "9999px",
-          border: `${hovered ? 1 : 1.5}px solid var(--foreground)`,
+          border: "1.5px dashed var(--accent)",
           pointerEvents: "none",
           zIndex: 9999,
-          opacity: hidden ? 0 : 1,
-          backgroundColor: hovered ? "var(--foreground)" : "transparent",
-          mixBlendMode: hovered ? ("difference" as React.CSSProperties["mixBlendMode"]) : ("normal" as React.CSSProperties["mixBlendMode"]),
+          opacity: hidden ? 0 : 0.9,
+          boxShadow: "0 0 12px var(--accent)40",
         }}
         animate={{
-          width: clicked ? 18 : hovered ? 44 : 28,
-          height: clicked ? 18 : hovered ? 44 : 28,
+          width: clicked ? 18 : hovered ? 48 : 34,
+          height: clicked ? 18 : hovered ? 48 : 34,
+          rotate: [0, 360],
         }}
-        transition={{ type: "spring", stiffness: 300, damping: 22 }}
+        transition={{
+          width: { type: "spring", stiffness: 500, damping: 25 },
+          height: { type: "spring", stiffness: 500, damping: 25 },
+          rotate: { repeat: Infinity, duration: hovered ? 3 : 8, ease: "linear" },
+        }}
       />
 
-      {/* Inner dot — instant follower */}
+      {/* Target reticle crosshairs on hover */}
+      {hovered && (
+        <motion.div
+          style={{
+            x: springX,
+            y: springY,
+            translateX: "-50%",
+            translateY: "-50%",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+            zIndex: 9999,
+            width: 56,
+            height: 56,
+          }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 0.8 }}
+          exit={{ scale: 0, opacity: 0 }}
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-accent" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-accent" />
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] w-2.5 bg-accent" />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[2px] w-2.5 bg-accent" />
+        </motion.div>
+      )}
+
+      {/* Inner instant point marker with vibrant accent glow */}
       <motion.div
         style={{
           x: dotX,
@@ -110,11 +136,13 @@ export const MagneticCursor: React.FC = () => {
           borderRadius: "9999px",
           pointerEvents: "none",
           zIndex: 9999,
-          opacity: hidden ? 0 : hovered ? 0 : 1,
-          width: clicked ? 3 : 5,
-          height: clicked ? 3 : 5,
+          opacity: hidden ? 0 : 1,
+          width: clicked ? 6 : hovered ? 8 : 4,
+          height: clicked ? 6 : hovered ? 8 : 4,
           backgroundColor: "var(--accent)",
+          boxShadow: "0 0 10px var(--accent)",
         }}
+        transition={{ type: "spring", stiffness: 600, damping: 30 }}
       />
     </>
   );

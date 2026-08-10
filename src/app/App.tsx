@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowUpRight, Download, Play, X, Mail, Github, Linkedin } from "lucide-react";
+import { ArrowUpRight, Download, Play, X, Mail, Github, Linkedin, ChevronLeft, ChevronRight, Terminal, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import _historyData from "../data/history.json";
@@ -10,6 +10,7 @@ import ThreeWaveField from "./components/ui/ThreeWaveField";
 import MagneticCursor from "./components/ui/MagneticCursor";
 import ScrollProgressBar from "./components/ui/ScrollProgressBar";
 import SplitHeading from "./components/ui/SplitHeading";
+import FadeProfileImage from "./components/ui/FadeProfileImage";
 
 const THEMES = [
   // 1-6 Neutrals & Professional
@@ -642,8 +643,58 @@ export default function App() {
   const [skewDeg, setSkewDeg] = useState(0);
   const skewRef = useRef(0);
 
+  // Scroll-driven & drag horizontal carousel offset for RECORDS
+  const [certOffset, setCertOffset] = useState(0);
+  const certTrackRef = useRef<HTMLDivElement>(null);
+  const certContainerRef = useRef<HTMLDivElement>(null);
+  const prevScrollY = useRef(0);
+
+  // LAB interactive simulation state
+  const [simulatingId, setSimulatingId] = useState<string | null>(null);
+  const [labLogs, setLabLogs] = useState<string[]>([
+    "SYS_INIT: Telemetry engine online.",
+    "EXP_014: Standard evaluation matrix active.",
+  ]);
+
+  const runLabSimulation = (id: string, name: string) => {
+    setSimulatingId(id);
+    setLabLogs((prev) => [
+      `EXEC [${id}]: Running test pipeline for ${name}...`,
+      `STREAM: Analyzing tensor confidence levels...`,
+      ...prev.slice(0, 4),
+    ]);
+    setTimeout(() => {
+      setLabLogs((prev) => [
+        `STATUS [${id}]: Test completed. Confidence 99.4% [PASS].`,
+        ...prev.slice(0, 4),
+      ]);
+      setSimulatingId(null);
+    }, 1200);
+  };
+
   // ── scroll-driven state ───────────────────────────────────────────────────
   const { scrollY, totalProgress, velocity, sectionProgress } = useScrollProgress();
+
+  // Calculate max scroll bounds for certificates slider
+  const maxCertOffset = Math.max(0, certificatesData.length * 360 - 1000);
+
+  // Handle certificates horizontal scroll carousel
+  useEffect(() => {
+    const delta = scrollY - prevScrollY.current;
+    prevScrollY.current = scrollY;
+    if (Math.abs(delta) > 0.2) {
+      setCertOffset((prev) => Math.max(-maxCertOffset, Math.min(0, prev - delta * 0.95)));
+    }
+  }, [scrollY, maxCertOffset]);
+
+  const slideCerts = (direction: "left" | "right") => {
+    const step = 360;
+    if (direction === "right") {
+      setCertOffset((prev) => Math.max(-maxCertOffset, prev - step));
+    } else {
+      setCertOffset((prev) => Math.min(0, prev + step));
+    }
+  };
 
   // Cross-reference: scroll to entry, flash highlight
   const jump = useCallback((id: string) => {
@@ -875,7 +926,7 @@ export default function App() {
             </Reveal>
           </div>
 
-          {/* portrait with parallax layers */}
+          {/* portrait with fade transition & parallax layers */}
           <Reveal delay={100}>
             <div className="relative group cursor-crosshair">
               {/* subject layer — moves with cursor */}
@@ -884,22 +935,22 @@ export default function App() {
                   transform: `translate(${parallax.x}px, ${parallax.y}px)`,
                   transition: reduced ? "none" : "transform 0.12s ease-out",
                 }}
-                className="relative"
+                className="relative aspect-[4/5]"
               >
                 <div className="absolute translate-x-3 translate-y-3 inset-0 bg-muted -z-10" />
-                <img
-                  src="/profile.png"
-                  alt="SUBJECT: TAN — field photograph"
-                  style={{
-                    filter: reduced
-                      ? undefined
-                      : heroDitherProgress > 0.15
-                        ? `url(#dither) contrast(${1 + heroDitherProgress * 0.25}) brightness(${1 - heroDitherProgress * 0.12})`
-                        : undefined,
-                    transition: "filter 0.3s ease-out",
-                  }}
-                  className="w-full grayscale contrast-110 object-cover aspect-[4/5] group-hover:[filter:url(#dither)] transition-all duration-500"
+                <FadeProfileImage
+                  heroDitherProgress={heroDitherProgress}
+                  className="w-full h-full object-cover"
                 />
+
+                {/* Unique Doodle Arrow 1: Hero Profile Photo */}
+                <div className="hidden lg:flex items-center gap-1.5 text-accent font-doodle text-sm font-bold absolute -bottom-9 -left-12 pointer-events-none select-none z-30">
+                  <svg width="55" height="35" viewBox="0 0 55 35" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <path d="M 5,30 Q 25,5 48,15" />
+                    <path d="M 40,10 L 48,15 L 44,24" />
+                  </svg>
+                  <span>click photo to cycle!</span>
+                </div>
               </div>
               {/* frame overlay — counter-moves slightly for depth */}
               <div
@@ -916,9 +967,59 @@ export default function App() {
                   <span className="opacity-55">SUBJECT: TAN</span>
                   <span className="opacity-40">FIELD: SOFTWARE DEV</span>
                 </div>
-                <button className="flex items-center gap-1.5 bg-foreground text-background px-3 py-1.5 font-pixel text-[8px] uppercase hover:bg-accent transition-colors">
-                  <Play className="w-2.5 h-2.5" /> PLAY FIELD NOTE
-                </button>
+                {/* Video Intro Modal */}
+                <Dialog.Root>
+                  <Dialog.Trigger asChild>
+                    <button className="flex items-center gap-1.5 bg-foreground text-background px-3 py-1.5 font-pixel text-[8px] uppercase hover:bg-accent transition-colors cursor-pointer">
+                      <Play className="w-2.5 h-2.5 fill-current" /> PLAY FIELD NOTE
+                    </button>
+                  </Dialog.Trigger>
+                  <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-background/85 backdrop-blur-md z-50" />
+                    <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-[92vw] max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-background p-6 shadow-2xl rounded-lg">
+                      <div className="flex justify-between items-center border-b border-border pb-3">
+                        <div className="flex items-center gap-2 font-pixel text-[9px] text-accent tracking-widest uppercase font-bold">
+                          <Play className="w-3 h-3 fill-accent" />
+                          <span>[ FIELD NOTE / VIDEO INTRODUCTION ]</span>
+                        </div>
+                        <Dialog.Close className="rounded-sm opacity-70 hover:opacity-100 transition-opacity">
+                          <X className="h-4 w-4" />
+                          <span className="sr-only">Close</span>
+                        </Dialog.Close>
+                      </div>
+
+                      {/* Video Player Placeholder */}
+                      <div className="relative aspect-video bg-neutral-900 rounded-md overflow-hidden border border-border group flex items-center justify-center">
+                        <video
+                          controls
+                          poster="/profile1.png"
+                          className="w-full h-full object-cover"
+                        >
+                          <source src="/video-intro.mp4" type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                        
+                        {/* Interactive overlay instructions for attaching video */}
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center text-white pointer-events-none group-hover:bg-black/40 transition-all">
+                          <div className="w-14 h-14 rounded-full bg-accent/90 flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform">
+                            <Play className="w-6 h-6 fill-white text-white ml-0.5" />
+                          </div>
+                          <p className="font-pixel text-[10px] tracking-widest uppercase font-bold text-white mb-1">
+                            VIDEO INTRO PLACEHOLDER
+                          </p>
+                          <p className="text-xs text-neutral-300 max-w-md">
+                            To attach your introduction video, place your video file at <code className="bg-neutral-800 text-accent px-1.5 py-0.5 rounded text-[11px]">public/video-intro.mp4</code>.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center font-pixel text-[9px] text-muted-foreground pt-2">
+                        <span>STATUS: READY FOR VIDEO ATTACHMENT</span>
+                        <span>FORMAT: MP4 / WEBM</span>
+                      </div>
+                    </Dialog.Content>
+                  </Dialog.Portal>
+                </Dialog.Root>
               </div>
             </div>
           </Reveal>
@@ -930,91 +1031,130 @@ export default function App() {
         </div>
 
         {/* records ────────────────────────────────────────────────────── */}
-        <section className="w-full dark bg-background text-foreground py-16 md:py-24">
+        <section className="w-full dark bg-background text-foreground py-16 md:py-24 overflow-hidden">
           <div id="RECORDS/002" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10">
-          <div className="flex items-center gap-4">
-            <FieldMark sectionId="002" externalFrame={fieldMarkScrollFrame("002")} />
-            <SplitHeading
-              as="h2"
-              delay={0}
-              stagger={60}
-              className="text-5xl md:text-6xl font-pixel tracking-widest uppercase"
-            >
-              RECORDS
-            </SplitHeading>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <FieldMark sectionId="002" externalFrame={fieldMarkScrollFrame("002")} />
+              <SplitHeading
+                as="h2"
+                delay={0}
+                stagger={60}
+                className="text-5xl md:text-6xl font-pixel tracking-widest uppercase"
+              >
+                RECORDS
+              </SplitHeading>
+            </div>
+            {/* Interactive Carousel Controls */}
+            <div className="flex items-center gap-3">
+              {/* Unique Doodle Arrow 2: Records Slider */}
+              <div className="hidden sm:flex items-center gap-1.5 text-accent font-doodle text-sm font-bold pointer-events-none select-none mr-2">
+                <span>swipe or drag cards!</span>
+                <svg width="45" height="28" viewBox="0 0 45 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M 5,14 Q 22,2 38,14" />
+                  <path d="M 30,10 L 38,14 L 34,22" />
+                </svg>
+              </div>
+              <button
+                onClick={() => slideCerts("left")}
+                disabled={certOffset >= 0}
+                className="p-2 border border-border hover:border-accent hover:text-accent disabled:opacity-30 transition-colors rounded-sm"
+                title="Slide left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => slideCerts("right")}
+                disabled={Math.abs(certOffset) >= maxCertOffset}
+                className="p-2 border border-border hover:border-accent hover:text-accent disabled:opacity-30 transition-colors rounded-sm"
+                title="Slide right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {certificatesData.map((cert, i) => {
-              // Each card's rotate-in is staggered: section enters and cards tilt flat one by one
-              const stagger = 0.15;
-              const cardProgress = Math.min(1, Math.max(0, (recordsProgress - i * stagger) / (1 - i * stagger)));
-              const rotateX = reduced ? 0 : (1 - cardProgress) * 4; // 4deg → 0deg
-              return (
-              <Reveal key={cert.n} delay={i * 70}>
-                <Dialog.Root>
-                  <Dialog.Trigger asChild>
-                    <div
-                      className="flex flex-col gap-3 group cursor-pointer"
-                      style={{
-                        transform: `perspective(800px) rotateX(${rotateX}deg)`,
-                        transition: reduced ? "none" : "transform 0.1s ease-out",
-                        transformOrigin: "top center",
-                      }}
-                    >
-                      <div className="font-pixel text-[9px] text-muted-foreground">[{cert.n}]</div>
-                      <div className="relative aspect-video border border-border bg-muted overflow-hidden">
-                        <img
-                          src={cert.img || `https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=600&q=80&sig=${cert.sig}`}
-                          alt={cert.name}
-                          className="w-full h-full object-cover grayscale opacity-70 group-hover:opacity-100 group-hover:[filter:url(#dither)] transition-all duration-500"
-                        />
-                      </div>
-                      <div>
-                        <div className="font-medium text-sm leading-snug group-hover:text-accent transition-colors">{cert.name}</div>
-                        <div className="font-pixel text-[9px] text-muted-foreground mt-0.5">
-                          ISSUED BY — {cert.issuer}
-                        </div>
-                        <div className="flex items-center gap-2 font-pixel text-[9px] mt-1">
-                          <span>{cert.year}</span>
-                           <span className="border border-dashed border-accent bg-accent/5 text-accent font-pixel text-[8px] px-1.5 py-0.5 rounded-sm font-bold">VERIFIED</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Dialog.Trigger>
-                  <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50" />
-                    <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-[90vw] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 border border-border bg-background p-6 shadow-xl">
-                      <div className="relative aspect-video border border-border bg-muted overflow-hidden">
-                        <img
-                          src={cert.img || `https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=600&q=80&sig=${cert.sig}`}
-                          alt={cert.name}
-                          className="w-full h-full object-cover grayscale"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Dialog.Title className="text-lg font-medium tracking-tight">
-                          {cert.name}
-                        </Dialog.Title>
-                        <Dialog.Description className="text-sm text-foreground/75 leading-relaxed">
-                          {cert.desc}
-                        </Dialog.Description>
-                        <div className="flex items-center gap-4 mt-2 font-pixel text-[9px] text-muted-foreground">
-                          <span>ISSUER: {cert.issuer}</span>
-                          <span>YEAR: {cert.year}</span>
-                           <span className="border border-dashed border-accent bg-accent/5 text-accent font-pixel text-[8px] px-1.5 py-0.5 rounded-sm font-bold">STATUS: VERIFIED</span>
-                        </div>
-                      </div>
-                      <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
-                        <X className="h-4 w-4" />
-                        <span className="sr-only">Close</span>
-                      </Dialog.Close>
-                    </Dialog.Content>
-                  </Dialog.Portal>
-                </Dialog.Root>
-              </Reveal>
-              );
-            })}
 
+          {/* Draggable & Scroll-driven Carousel Track */}
+          <div ref={certContainerRef} className="w-full overflow-hidden pt-2 pb-6 cursor-grab active:cursor-grabbing">
+            <motion.div
+              ref={certTrackRef}
+              drag="x"
+              dragConstraints={{ left: -maxCertOffset, right: 0 }}
+              className="flex gap-8 w-max transition-transform duration-100 ease-out"
+              animate={{ x: certOffset }}
+              onDragEnd={(_, info) => setCertOffset((prev) => Math.max(-maxCertOffset, Math.min(0, prev + info.offset.x)))}
+            >
+              {certificatesData.map((cert: any, i: number) => {
+                const num = cert.n || String(i + 1).padStart(2, "0");
+                const name = cert.name || "CERTIFICATE";
+                const issuer = cert.issuer || "ISSUER";
+                const year = cert.year || "2026";
+                const desc = cert.desc || "Verified certificate record.";
+                const img = cert.img || `https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?w=600&q=80&sig=${cert.sig || i + 1}`;
+
+                return (
+                  <div key={num || i} className="w-[300px] sm:w-[340px] shrink-0 select-none">
+                    <Dialog.Root>
+                      <Dialog.Trigger asChild>
+                        <div className="flex flex-col gap-3 group cursor-pointer border border-border/60 bg-muted/10 p-4 rounded-md hover:border-accent transition-all duration-300">
+                          <div className="font-pixel text-[9px] text-muted-foreground flex justify-between items-center">
+                            <span>[{num}]</span>
+                            <span className="text-[8px] text-accent font-bold tracking-widest uppercase">DRAG / CLICK</span>
+                          </div>
+                          <div className="relative aspect-video border border-border bg-muted overflow-hidden rounded-sm">
+                            <img
+                              src={img}
+                              alt={name}
+                              draggable={false}
+                              className="w-full h-full object-cover grayscale opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 pointer-events-none"
+                            />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm leading-snug group-hover:text-accent transition-colors">{name}</div>
+                            <div className="font-pixel text-[9px] text-muted-foreground mt-1">
+                              ISSUED BY — {issuer}
+                            </div>
+                            <div className="flex items-center gap-2 font-pixel text-[9px] mt-2">
+                              <span>{year}</span>
+                              <span className="border border-dashed border-accent bg-accent/5 text-accent font-pixel text-[8px] px-1.5 py-0.5 rounded-sm font-bold">VERIFIED</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Dialog.Trigger>
+                      <Dialog.Portal>
+                        <Dialog.Overlay className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50" />
+                        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-[90vw] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 border border-border bg-background p-6 shadow-xl rounded-md">
+                          <div className="relative aspect-video border border-border bg-muted overflow-hidden rounded-sm">
+                            <img
+                              src={img}
+                              alt={name}
+                              className="w-full h-full object-cover grayscale"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Dialog.Title className="text-lg font-medium tracking-tight">
+                              {name}
+                            </Dialog.Title>
+                            <Dialog.Description className="text-sm text-foreground/75 leading-relaxed">
+                              {desc}
+                            </Dialog.Description>
+                            <div className="flex items-center gap-4 mt-2 font-pixel text-[9px] text-muted-foreground">
+                              <span>ISSUER: {issuer}</span>
+                              <span>YEAR: {year}</span>
+                              <span className="border border-dashed border-accent bg-accent/5 text-accent font-pixel text-[8px] px-1.5 py-0.5 rounded-sm font-bold">STATUS: VERIFIED</span>
+                            </div>
+                          </div>
+                          <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close</span>
+                          </Dialog.Close>
+                        </Dialog.Content>
+                      </Dialog.Portal>
+                    </Dialog.Root>
+                  </div>
+                );
+              })}
+            </motion.div>
           </div>
           </div>
         </section>
@@ -1023,13 +1163,14 @@ export default function App() {
           <Divider from="ARCHIVE ENTRY / 003" to="BUILT" />
         </div>
 
-        {/* built ──────────────────────────────────────────────────────── */}
-        <section className="w-full bg-background text-foreground py-16 md:py-24">
-          <div id="BUILT" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10 relative">
-          {/* Three.js wave field — amplitude driven by scroll velocity */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <ThreeWaveField themeIdx={themeIdx} scrollVelocity={velocity} scrollProgress={totalProgress} />
-          </div>
+        {/* built (PROJECTS) ──────────────────────────────────────────── */}
+        <section className="w-full bg-background text-foreground py-16 md:py-24 overflow-hidden">
+          <Reveal direction="left" distance={90} delay={60}>
+            <div id="BUILT" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10 relative">
+            {/* Three.js wave field — amplitude driven by scroll velocity */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <ThreeWaveField themeIdx={themeIdx} scrollVelocity={velocity} scrollProgress={totalProgress} />
+            </div>
 
           <div className="relative flex flex-row-reverse items-start gap-4 text-right border-b border-border pb-8 mb-8">
             <FieldMark sectionId="003" externalFrame={fieldMarkScrollFrame("003")} />
@@ -1052,7 +1193,15 @@ export default function App() {
 
           <div className="relative grid md:grid-cols-[160px_1fr] gap-8 border-t border-border pt-8">
             {/* index list */}
-            <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
+            <div className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0 relative">
+              {/* Unique Doodle Arrow 3: Projects Index List */}
+              <div className="hidden md:flex items-center gap-1 text-accent font-doodle text-xs font-bold mb-1 pointer-events-none select-none">
+                <span>select project to view!</span>
+                <svg width="35" height="20" viewBox="0 0 35 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M 4,14 Q 18,2 28,12" />
+                  <path d="M 22,8 L 28,12 L 24,18" />
+                </svg>
+              </div>
               <div className="font-pixel text-[8px] text-muted-foreground mb-2 hidden md:block tracking-widest">
                 INDEX
               </div>
@@ -1225,6 +1374,7 @@ export default function App() {
             </AnimatePresence>
           </div>
           </div>
+          </Reveal>
         </section>
 
         <div className="max-w-6xl w-full mx-auto px-4 md:px-8 py-10">
@@ -1234,26 +1384,42 @@ export default function App() {
         {/* lab ────────────────────────────────────────────────────────── */}
         <section className="w-full dark bg-background text-foreground py-16 md:py-24">
           <div id="LAB" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10">
-          <div className="flex items-start gap-4">
-            <FieldMark sectionId="005" externalFrame={fieldMarkScrollFrame("005")} />
-            <div>
-              <SplitHeading
-                as="h2"
-                delay={0}
-                stagger={65}
-                className="text-4xl md:text-5xl font-mono font-medium tracking-tight uppercase"
-              >
-                LAB / EXPERIMENTS
-              </SplitHeading>
-              <Reveal delay={320}>
-                <p className="font-mono text-sm opacity-70 mt-1">
-                  "Not everything here is finished."
-                </p>
-              </Reveal>
+          <div className="flex justify-between items-start">
+            <div className="flex items-start gap-4">
+              <FieldMark sectionId="005" externalFrame={fieldMarkScrollFrame("005")} />
+              <div>
+                <SplitHeading
+                  as="h2"
+                  delay={0}
+                  stagger={65}
+                  className="text-4xl md:text-5xl font-mono font-medium tracking-tight uppercase"
+                >
+                  LAB / EXPERIMENTS
+                </SplitHeading>
+                <Reveal delay={320}>
+                  <p className="font-mono text-sm opacity-70 mt-1">
+                    "Interactive sandbox &amp; live diagnostic telemetry."
+                  </p>
+                </Reveal>
+              </div>
+            </div>
+            {/* Unique Doodle Arrow 4: Lab Simulation */}
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-1 text-accent font-doodle text-sm font-bold pointer-events-none select-none mr-2">
+                <span>click to test simulation!</span>
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M 4,4 Q 20,20 32,12" />
+                  <path d="M 25,10 L 32,12 L 30,4" />
+                </svg>
+              </div>
+              <div className="font-pixel text-[9px] border border-border px-3 py-1.5 rounded-sm text-accent bg-accent/5 hidden md:flex items-center gap-2">
+                <Terminal className="w-3.5 h-3.5" />
+                <span>LAB ENGINE ONLINE</span>
+              </div>
             </div>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid md:grid-cols-2 gap-6">
             {[
               {
                 id: "LAB/001", num: "001",
@@ -1277,61 +1443,66 @@ export default function App() {
               <Reveal key={lab.id} delay={i * 80}>
                 <div
                   id={lab.id}
-                  className={`border border-border p-6 hover:bg-muted/20 transition-all duration-300 group ${hilite === lab.id ? "border-accent bg-muted/30" : ""
-                    }`}
+                  className={`border border-border p-6 hover:border-accent transition-all duration-300 group rounded-md bg-muted/10 flex flex-col justify-between ${hilite === lab.id ? "border-accent bg-muted/30" : ""}`}
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="font-pixel text-[9px] text-muted-foreground">
-                      LAB / {lab.num}
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="font-pixel text-[9px] text-muted-foreground">
+                        LAB / {lab.num}
+                      </div>
+                      <div
+                        className={`font-pixel text-[8px] px-2 py-0.5 border border-dashed rounded-sm ${lab.accent
+                          ? "border-accent bg-accent/5 text-accent font-bold"
+                          : "text-foreground/70 border-border"
+                          }`}
+                      >
+                        STATUS: {simulatingId === lab.id ? "TESTING..." : lab.status}
+                      </div>
                     </div>
-                    <div
-                      className={`font-pixel text-[8px] px-2 py-0.5 border border-dashed ${lab.accent
-                        ? "border-accent bg-accent/5 text-accent font-bold"
-                        : "text-foreground/70 border-border"
-                        }`}
-                    >
-                      STATUS: {lab.status}
+                    <h3 className="text-lg font-medium mb-1 group-hover:text-accent transition-colors">
+                      {lab.name}
+                    </h3>
+                    <p className="font-pixel text-[9px] text-muted-foreground mb-4">{lab.cat}</p>
+                    <div className="text-sm border-t border-border pt-4 text-foreground/75 mb-6">
+                      <span className="font-pixel text-[8px] text-muted-foreground uppercase mr-2">
+                        {lab.label} —
+                      </span>
+                      {lab.note}
                     </div>
                   </div>
-                  <h3 className="text-lg font-medium mb-1 group-hover:underline decoration-1 underline-offset-4">
-                    {lab.name}
-                  </h3>
-                  <p className="font-pixel text-[9px] text-muted-foreground mb-4">{lab.cat}</p>
-                  <div className="text-sm border-t border-border pt-4 text-foreground/75">
-                    <span className="font-pixel text-[8px] text-muted-foreground uppercase mr-2">
-                      {lab.label} —
-                    </span>
-                    {lab.note}
-                  </div>
+
+                  <button
+                    onClick={() => runLabSimulation(lab.id, lab.name)}
+                    disabled={simulatingId === lab.id}
+                    className="w-full flex items-center justify-center gap-2 border border-border hover:bg-accent hover:text-primary-foreground py-2 font-pixel text-[9px] uppercase tracking-widest transition-all rounded-sm disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${simulatingId === lab.id ? "animate-spin text-accent" : ""}`} />
+                    <span>{simulatingId === lab.id ? "RUNNING SIMULATION..." : "RUN TEST SIMULATION"}</span>
+                  </button>
                 </div>
               </Reveal>
             ))}
           </div>
 
+          {/* Interactive Experiment Telemetry Terminal */}
           <Reveal delay={150}>
-            <div className="border border-dashed border-border p-6">
-              <div className="font-pixel text-[8px] text-muted-foreground mb-5 tracking-widest">
-                EXPERIMENT LOG
+            <div className="border border-border bg-muted/20 p-6 rounded-md font-mono">
+              <div className="font-pixel text-[8px] text-muted-foreground mb-4 tracking-widest flex items-center justify-between border-b border-border pb-3">
+                <span className="flex items-center gap-2">
+                  <Terminal className="w-3 h-3 text-accent" />
+                  <span>EXPERIMENT LOG &amp; LIVE TELEMETRY</span>
+                </span>
+                <span className="text-accent">ID: EXP/014</span>
               </div>
-              <div className="font-pixel text-[9px] text-foreground/70 mb-3">EXPERIMENT / 014</div>
-              <div
-                className="grid gap-y-1.5 text-sm"
-                style={{ gridTemplateColumns: "88px 1fr" }}
-              >
-                <span className="font-pixel text-[8px] text-muted-foreground uppercase mt-[3px]">
-                  QUESTION —
-                </span>
-                <span className="text-foreground/75">
-                  Can this model detect X reliably at night?
-                </span>
-                <span className="font-pixel text-[8px] text-muted-foreground uppercase mt-[3px]">
-                  RESULT —
-                </span>
-                <span>Promising, ~80% on the test set.</span>
-                <span className="font-pixel text-[8px] text-muted-foreground uppercase mt-[3px]">
-                  NEXT —
-                </span>
-                <span className="text-foreground/75">Try against low-light footage.</span>
+              <div className="space-y-2 text-xs">
+                {labLogs.map((log, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="text-accent select-none">&gt;</span>
+                    <span className={idx === 0 ? "text-foreground font-semibold" : "text-muted-foreground"}>
+                      {log}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </Reveal>
@@ -1342,10 +1513,10 @@ export default function App() {
           <Divider from="RECORD / 006" to="FIELD HISTORY" />
         </div>
 
-        {/* field history ──────────────────────────────────────────────── */}
+        {/* field history (Interactive Magnetic Tech Cards) ────────────────── */}
         <section className="w-full bg-background text-foreground py-16 md:py-24">
           <div id="FIELD-HISTORY" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col items-center text-center gap-10">
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
             <FieldMark sectionId="007" externalFrame={fieldMarkScrollFrame("007")} />
             <SplitHeading
               as="h2"
@@ -1355,39 +1526,32 @@ export default function App() {
             >
               FIELD HISTORY
             </SplitHeading>
+            {/* Unique Doodle Arrow 5: Magnetic Draggable Cards */}
+            <div className="flex items-center gap-2 text-accent font-doodle text-base font-bold pointer-events-none select-none mt-1">
+              <span>grab &amp; toss cards around!</span>
+              <svg width="45" height="24" viewBox="0 0 45 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M 4,6 C 18,20 30,2 38,14" />
+                <path d="M 30,11 L 38,14 L 35,20" />
+              </svg>
+            </div>
           </div>
 
-          {/* Self-drawing vertical timeline — scaleY bound to scroll progress through this section */}
-          <div className="relative w-full">
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: 0,
-                width: 1,
-                height: "100%",
-                backgroundColor: "currentColor",
-                opacity: 0.12,
-                transformOrigin: "top center",
-                transform: reduced ? "scaleY(1)" : `scaleY(${Math.min(1, historyProgress * 1.6)})`,
-                transition: reduced ? "none" : "transform 0.05s linear",
-                pointerEvents: "none",
-              }}
-            />
           <div className="grid md:grid-cols-3 gap-6 w-full text-left">
             {historyData.map((job, i) => (
               <Reveal key={job.year} delay={i * 80}>
-                <div
+                <motion.div
                   id={job.id}
-                  className={`border border-border p-6 h-full flex flex-col gap-3 transition-all duration-300 hover:bg-muted/10 ${hilite === job.id
-                    ? "border-accent bg-muted/20"
-                    : ""
-                    }`}
+                  drag
+                  dragElastic={0.15}
+                  dragSnapToOrigin
+                  dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+                  whileDrag={{ scale: 1.06, cursor: "grabbing", zIndex: 50, boxShadow: "0 25px 35px rgba(0,0,0,0.3)" }}
+                  transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                  className={`border border-border p-6 h-full flex flex-col gap-3 transition-all duration-300 hover:border-accent cursor-grab active:cursor-grabbing bg-background rounded-md shadow-sm select-none ${hilite === job.id ? "border-accent bg-muted/20" : ""}`}
                 >
                   <div className="font-pixel text-[10px] tracking-widest text-muted-foreground flex justify-between items-center">
                     <span>{job.year}</span>
-                    <span className="opacity-50">[{job.id.split('/').pop()}]</span>
+                    <span className="text-[8px] border border-border px-1.5 py-0.5 rounded-sm">MAGNETIC SLOT</span>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium uppercase tracking-wide mb-1">
@@ -1402,7 +1566,7 @@ export default function App() {
                     <p className="text-xs leading-relaxed text-foreground/80">{job.desc}</p>
                   </div>
                   {job.refs.length > 0 && (
-                    <div className="mt-auto pt-4 flex items-center gap-2 flex-wrap">
+                    <div className="mt-auto pt-4 flex items-center gap-2 flex-wrap border-t border-border/40">
                       <span className="font-pixel text-[8px] text-muted-foreground">
                         SEE ALSO —
                       </span>
@@ -1411,62 +1575,61 @@ export default function App() {
                       ))}
                     </div>
                   )}
-                </div>
+                </motion.div>
               </Reveal>
             ))}
-          </div>
           </div>
           </div>
         </section>
       </main>
 
       {/* contact ── full-width dark section with Three.js wave field ───────── */}
-      <section id="CONTACT" className="bg-primary text-primary-foreground relative overflow-hidden mt-28">
+      <section id="CONTACT" className="bg-primary text-primary-foreground relative overflow-hidden mt-10">
         <div className="absolute inset-0">
           <ThreeWaveField dark themeIdx={themeIdx} scrollVelocity={velocity} scrollProgress={totalProgress} />
         </div>
-        <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-28 md:py-40 flex flex-col items-start gap-10">
+        <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-12 md:py-16 flex flex-col items-start gap-6">
           <FieldMark sectionId="009" externalFrame={fieldMarkScrollFrame("009")} />
           <div>
             <div
-              className="font-pixel text-[9px] tracking-widest mb-3"
+              className="font-pixel text-[9px] tracking-widest mb-2"
               style={{
                 opacity: reduced ? 0.4 : Math.max(0.08, contactTextProgress * 0.5),
-                transform: reduced ? "none" : `translateY(${(1 - contactTextProgress) * 24}px)`,
+                transform: reduced ? "none" : `translateY(${(1 - contactTextProgress) * 16}px)`,
                 transition: reduced ? "none" : "opacity 0.06s, transform 0.06s",
               }}
             >
               CONTACT / 009
             </div>
-            {/* Dramatic character-by-character contact heading */}
+            {/* Compact contact heading */}
             <div
-              className="text-3xl md:text-6xl font-black tracking-tight leading-none mb-4 overflow-hidden"
+              className="text-2xl md:text-4xl font-black tracking-tight leading-tight mb-2 overflow-hidden"
               style={{
-                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, contactTextProgress * 1.4)) * 60}px)`,
+                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, contactTextProgress * 1.4)) * 30}px)`,
                 opacity: reduced ? 1 : Math.min(1, contactTextProgress * 2),
                 transition: reduced ? "none" : "transform 0.08s cubic-bezier(0.16,1,0.3,1), opacity 0.07s ease",
               }}
             >
-              START A NEW<br />FIELD NOTE.
+              START A NEW FIELD NOTE.
             </div>
             <p
-              className="text-sm"
+              className="text-xs md:text-sm text-primary-foreground/75"
               style={{
                 opacity: reduced ? 0.55 : Math.max(0, (contactTextProgress - 0.45) * 1.2),
-                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, Math.max(0, (contactTextProgress - 0.45) / 0.55))) * 20}px)`,
+                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, Math.max(0, (contactTextProgress - 0.45) / 0.55))) * 10}px)`,
                 transition: reduced ? "none" : "opacity 0.06s, transform 0.06s",
               }}
             >"Have a problem worth exploring?"</p>
           </div>
-          <div className="flex gap-6 mt-4">
-            <a href="mailto:cmkbuena@gmail.com" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-16 h-16 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300">
-              <Mail className="w-6 h-6 opacity-60 group-hover:opacity-100 transition-opacity" />
+          <div className="flex gap-4 mt-1">
+            <a href="mailto:cmkbuena@gmail.com" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-12 h-12 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300 rounded-md">
+              <Mail className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" />
             </a>
-            <a href="https://github.com/ChristianBuena" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-16 h-16 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300">
-              <Github className="w-6 h-6 opacity-60 group-hover:opacity-100 transition-opacity" />
+            <a href="https://github.com/ChristianBuena" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-12 h-12 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300 rounded-md">
+              <Github className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" />
             </a>
-            <a href="https://www.linkedin.com/in/mrtnztan/" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-16 h-16 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300">
-              <Linkedin className="w-6 h-6 opacity-60 group-hover:opacity-100 transition-opacity" />
+            <a href="https://www.linkedin.com/in/mrtnztan/" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-12 h-12 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300 rounded-md">
+              <Linkedin className="w-5 h-5 opacity-70 group-hover:opacity-100 transition-opacity" />
             </a>
           </div>
         </div>
