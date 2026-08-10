@@ -5,6 +5,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import _historyData from "../data/history.json";
 import projectsData from "../data/projects.json";
 import certificatesData from "../data/certificates.json";
+import { useScrollProgress } from "../hooks/useScrollProgress";
+import ThreeWaveField from "./components/ui/ThreeWaveField";
 
 const THEMES = [
   // 1-6 Neutrals & Professional
@@ -393,14 +395,20 @@ const DottedWaveField: React.FC<{ dark?: boolean; themeIdx?: number }> = ({ dark
 };
 
 // ── pixel sprite field mark ───────────────────────────────────────────────────
-const FieldMark: React.FC<{ sectionId?: string }> = ({ sectionId = "001" }) => {
+const FieldMark: React.FC<{ sectionId?: string; externalFrame?: number }> = ({ sectionId = "001", externalFrame }) => {
   const frames = SPRITES[sectionId] ?? SPRITES["001"];
-  const [frame, setFrame] = useState(0);
+  const [timerFrame, setTimerFrame] = useState(0);
 
+  // Only run the timer when no external scroll-driven frame is provided
   useEffect(() => {
-    const id = setInterval(() => setFrame((f) => (f + 1) % frames.length), 900);
+    if (externalFrame !== undefined) return;
+    const id = setInterval(() => setTimerFrame((f) => (f + 1) % frames.length), 900);
     return () => clearInterval(id);
-  }, [frames.length]);
+  }, [frames.length, externalFrame]);
+
+  const frame = externalFrame !== undefined
+    ? Math.min(externalFrame, frames.length - 1)
+    : timerFrame;
 
   return (
     <div
@@ -604,6 +612,9 @@ export default function App() {
   const [resolving, setResolving] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
 
+  // ── scroll-driven state ───────────────────────────────────────────────────
+  const { scrollY, totalProgress, velocity, sectionProgress } = useScrollProgress();
+
   // Cross-reference: scroll to entry, flash highlight
   const jump = useCallback((id: string) => {
     setHilite(id);
@@ -663,6 +674,27 @@ export default function App() {
   };
 
   const currentTheme = THEMES[themeIdx];
+
+  // ── scroll-derived values (inline, reactive to scrollY / totalProgress) ──────
+  // Hero portrait: dither intensifies as user scrolls away from hero
+  const heroHeight = heroRef.current?.offsetHeight ?? 600;
+  const heroDitherProgress = Math.min(1, scrollY / (heroHeight * 0.6));
+
+  // FieldMark sprite frames driven by total page scroll
+  // Each section's FieldMark uses its own SPRITES frames array length
+  const fieldMarkScrollFrame = (sectionId: string): number => {
+    const frames = SPRITES[sectionId] ?? SPRITES["001"];
+    return Math.floor(totalProgress * (frames.length * 3)) % frames.length;
+  };
+
+  // Field History timeline: draw line as section scrolls into view
+  const historyProgress = sectionProgress("FIELD-HISTORY");
+
+  // Contact text: scrub in from 0.85 total progress
+  const contactTextProgress = Math.min(1, Math.max(0, (totalProgress - 0.82) / 0.18));
+
+  // Records section progress for card rotate-in
+  const recordsProgress = sectionProgress("RECORDS/002");
 
   return (
     <div
@@ -729,7 +761,7 @@ export default function App() {
             onMouseLeave={() => setParallax({ x: 0, y: 0 })}
           >
           <div className="flex flex-col gap-8">
-            <Reveal><FieldMark sectionId="001" /></Reveal>
+            <Reveal><FieldMark sectionId="001" externalFrame={fieldMarkScrollFrame("001")} /></Reveal>
             <div className="flex flex-col gap-4">
               <Reveal delay={60}>
                 <div className="inline-flex items-center bg-accent text-primary-foreground font-pixel text-[9px] tracking-widest px-2 py-0.5 uppercase rounded-sm font-bold shadow-sm">
@@ -774,6 +806,14 @@ export default function App() {
                 <img
                   src="/profile.png"
                   alt="SUBJECT: TAN — field photograph"
+                  style={{
+                    filter: reduced
+                      ? undefined
+                      : heroDitherProgress > 0.15
+                        ? `url(#dither) contrast(${1 + heroDitherProgress * 0.25}) brightness(${1 - heroDitherProgress * 0.12})`
+                        : undefined,
+                    transition: "filter 0.3s ease-out",
+                  }}
                   className="w-full grayscale contrast-110 object-cover aspect-[4/5] group-hover:[filter:url(#dither)] transition-all duration-500"
                 />
               </div>
@@ -809,17 +849,29 @@ export default function App() {
         <section className="w-full dark bg-background text-foreground py-16 md:py-24">
           <div id="RECORDS/002" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10">
           <div className="flex items-center gap-4">
-            <FieldMark sectionId="002" />
+            <FieldMark sectionId="002" externalFrame={fieldMarkScrollFrame("002")} />
             <Reveal>
               <h2 className="text-5xl md:text-6xl font-pixel tracking-widest uppercase">RECORDS</h2>
             </Reveal>
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {certificatesData.map((cert, i) => (
+            {certificatesData.map((cert, i) => {
+              // Each card's rotate-in is staggered: section enters and cards tilt flat one by one
+              const stagger = 0.15;
+              const cardProgress = Math.min(1, Math.max(0, (recordsProgress - i * stagger) / (1 - i * stagger)));
+              const rotateX = reduced ? 0 : (1 - cardProgress) * 4; // 4deg → 0deg
+              return (
               <Reveal key={cert.n} delay={i * 70}>
                 <Dialog.Root>
                   <Dialog.Trigger asChild>
-                    <div className="flex flex-col gap-3 group cursor-pointer">
+                    <div
+                      className="flex flex-col gap-3 group cursor-pointer"
+                      style={{
+                        transform: `perspective(800px) rotateX(${rotateX}deg)`,
+                        transition: reduced ? "none" : "transform 0.1s ease-out",
+                        transformOrigin: "top center",
+                      }}
+                    >
                       <div className="font-pixel text-[9px] text-muted-foreground">[{cert.n}]</div>
                       <div className="relative aspect-video border border-border bg-muted overflow-hidden">
                         <img
@@ -871,7 +923,9 @@ export default function App() {
                   </Dialog.Portal>
                 </Dialog.Root>
               </Reveal>
-            ))}
+              );
+            })}
+
           </div>
           </div>
         </section>
@@ -883,13 +937,13 @@ export default function App() {
         {/* built ──────────────────────────────────────────────────────── */}
         <section className="w-full bg-background text-foreground py-16 md:py-24">
           <div id="BUILT" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10 relative">
-          {/* wave field lives behind all content */}
+          {/* Three.js wave field — amplitude driven by scroll velocity */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <DottedWaveField themeIdx={themeIdx} />
+            <ThreeWaveField themeIdx={themeIdx} scrollVelocity={velocity} scrollProgress={totalProgress} />
           </div>
 
           <div className="relative flex flex-row-reverse items-start gap-4 text-right border-b border-border pb-8 mb-8">
-            <FieldMark sectionId="003" />
+            <FieldMark sectionId="003" externalFrame={fieldMarkScrollFrame("003")} />
             <div className="flex-1">
               <Reveal>
                 <h2 className="text-5xl md:text-6xl font-medium tracking-tight">
@@ -1089,7 +1143,7 @@ export default function App() {
         <section className="w-full dark bg-background text-foreground py-16 md:py-24">
           <div id="LAB" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10">
           <div className="flex items-start gap-4">
-            <FieldMark sectionId="005" />
+            <FieldMark sectionId="005" externalFrame={fieldMarkScrollFrame("005")} />
             <div>
               <Reveal>
                 <h2 className="text-4xl md:text-5xl font-mono font-medium tracking-tight uppercase">
@@ -1197,12 +1251,30 @@ export default function App() {
         <section className="w-full bg-background text-foreground py-16 md:py-24">
           <div id="FIELD-HISTORY" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col items-center text-center gap-10">
           <div className="flex flex-col items-center gap-4">
-            <FieldMark sectionId="007" />
+            <FieldMark sectionId="007" externalFrame={fieldMarkScrollFrame("007")} />
             <Reveal>
               <h2 className="text-5xl md:text-6xl font-medium tracking-tight uppercase">FIELD HISTORY</h2>
             </Reveal>
           </div>
 
+          {/* Self-drawing vertical timeline — scaleY bound to scroll progress through this section */}
+          <div className="relative w-full">
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: 0,
+                width: 1,
+                height: "100%",
+                backgroundColor: "currentColor",
+                opacity: 0.12,
+                transformOrigin: "top center",
+                transform: reduced ? "scaleY(1)" : `scaleY(${Math.min(1, historyProgress * 1.6)})`,
+                transition: reduced ? "none" : "transform 0.05s linear",
+                pointerEvents: "none",
+              }}
+            />
           <div className="grid md:grid-cols-3 gap-6 w-full text-left">
             {historyData.map((job, i) => (
               <Reveal key={job.year} delay={i * 80}>
@@ -1244,24 +1316,46 @@ export default function App() {
             ))}
           </div>
           </div>
+          </div>
         </section>
       </main>
 
-      {/* contact ── full-width dark section with wave field ─────────── */}
+      {/* contact ── full-width dark section with Three.js wave field ───────── */}
       <section id="CONTACT" className="bg-primary text-primary-foreground relative overflow-hidden mt-28">
         <div className="absolute inset-0">
-          <DottedWaveField dark themeIdx={themeIdx} />
+          <ThreeWaveField dark themeIdx={themeIdx} scrollVelocity={velocity} scrollProgress={totalProgress} />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-28 md:py-40 flex flex-col items-start gap-10">
-          <FieldMark sectionId="009" />
+          <FieldMark sectionId="009" externalFrame={fieldMarkScrollFrame("009")} />
           <div>
-            <div className="font-pixel text-[9px] tracking-widest opacity-40 mb-3">
+            <div
+              className="font-pixel text-[9px] tracking-widest opacity-40 mb-3"
+              style={{
+                opacity: reduced ? 0.4 : Math.max(0.1, contactTextProgress * 0.4),
+                transform: reduced ? "none" : `translateY(${(1 - contactTextProgress) * 8}px)`,
+                transition: reduced ? "none" : "opacity 0.1s, transform 0.1s",
+              }}
+            >
               CONTACT / 009
             </div>
-            <h2 className="text-3xl md:text-5xl font-medium tracking-tight leading-tight mb-3">
+            <h2
+              className="text-3xl md:text-5xl font-medium tracking-tight leading-tight mb-3"
+              style={{
+                opacity: reduced ? 1 : Math.max(0, contactTextProgress * 1.5 - 0.2),
+                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, contactTextProgress * 1.5)) * 16}px)`,
+                transition: reduced ? "none" : "opacity 0.08s, transform 0.08s",
+              }}
+            >
               START A NEW FIELD NOTE.
             </h2>
-            <p className="text-sm opacity-55">"Have a problem worth exploring?"</p>
+            <p
+              className="text-sm opacity-55"
+              style={{
+                opacity: reduced ? 0.55 : Math.max(0, (contactTextProgress - 0.4) * 0.9),
+                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, Math.max(0, (contactTextProgress - 0.4) / 0.6))) * 12}px)`,
+                transition: reduced ? "none" : "opacity 0.08s, transform 0.08s",
+              }}
+            >"Have a problem worth exploring?"</p>
           </div>
           <div className="flex gap-6 mt-4">
             <a href="mailto:cmkbuena@gmail.com" target="_blank" rel="noreferrer" className="group flex items-center justify-center border-2 border-primary-foreground/30 w-16 h-16 hover:border-primary-foreground hover:bg-primary-foreground/10 transition-all duration-300">
