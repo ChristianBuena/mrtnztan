@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowUpRight, Download, Play, X, Mail, Github, Linkedin } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from "motion/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import _historyData from "../data/history.json";
 import projectsData from "../data/projects.json";
 import certificatesData from "../data/certificates.json";
 import { useScrollProgress } from "../hooks/useScrollProgress";
 import ThreeWaveField from "./components/ui/ThreeWaveField";
+import MagneticCursor from "./components/ui/MagneticCursor";
+import ScrollProgressBar from "./components/ui/ScrollProgressBar";
+import SplitHeading from "./components/ui/SplitHeading";
 
 const THEMES = [
   // 1-6 Neutrals & Professional
@@ -450,31 +453,55 @@ const Reveal: React.FC<{
   children: React.ReactNode;
   delay?: number;
   className?: string;
-}> = ({ children, delay = 0, className = "" }) => {
+  direction?: "up" | "down" | "left" | "right";
+  distance?: number;
+}> = ({ children, delay = 0, className = "", direction = "up", distance = 40 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [vis, setVis] = useState(reduced);
+
+  const getHidden = () => {
+    if (reduced) return {};
+    switch (direction) {
+      case "down":  return { opacity: 0, transform: `translateY(-${distance}px)` };
+      case "left":  return { opacity: 0, transform: `translateX(${distance}px)` };
+      case "right": return { opacity: 0, transform: `translateX(-${distance}px)` };
+      default:      return { opacity: 0, transform: `translateY(${distance}px)` };
+    }
+  };
 
   useEffect(() => {
     if (reduced) return;
     const el = ref.current;
     if (!el) return;
+    // Fire immediately if already in viewport
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 0.98) {
+      setVis(true);
+      return;
+    }
     const obs = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) { setVis(true); obs.disconnect(); }
       },
-      { threshold: 0.08, rootMargin: "0px 0px -24px 0px" }
+      { threshold: 0.04, rootMargin: "0px 0px -8px 0px" }
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
+  const hidden = getHidden();
+
   return (
     <div
       ref={ref}
       style={{
-        opacity: vis ? 1 : 0,
-        transform: vis ? "none" : "translateY(12px)",
-        transition: `opacity 500ms ease-out ${delay}ms, transform 500ms ease-out ${delay}ms`,
+        opacity: reduced ? 1 : vis ? 1 : hidden.opacity,
+        transform: reduced ? "none" : vis ? "none" : hidden.transform,
+        transition: reduced
+          ? "none"
+          : `opacity 750ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms,
+             transform 750ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
+        willChange: vis ? "auto" : "opacity, transform",
       }}
       className={className}
     >
@@ -611,6 +638,9 @@ export default function App() {
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
   const [resolving, setResolving] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
+  // Smoothed skew for scroll velocity feel
+  const [skewDeg, setSkewDeg] = useState(0);
+  const skewRef = useRef(0);
 
   // ── scroll-driven state ───────────────────────────────────────────────────
   const { scrollY, totalProgress, velocity, sectionProgress } = useScrollProgress();
@@ -647,6 +677,14 @@ export default function App() {
       y: ((e.clientY - r.top - r.height / 2) / r.height) * 6,
     });
   }, []);
+
+  // Scroll skew: smoothly lerp skew driven by velocity
+  useEffect(() => {
+    if (reduced) return;
+    const target = Math.min(velocity * 0.018, 1.2) * (scrollY > (skewRef.current || 0) ? -1 : 1);
+    skewRef.current = scrollY;
+    setSkewDeg((prev) => prev * 0.7 + target * 0.3);
+  }, [velocity, scrollY]);
 
   // Project image "dither resolve" on switch
   const handleProjSelect = (i: number) => {
@@ -699,12 +737,14 @@ export default function App() {
   return (
     <div
       className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground selection:text-background"
+      style={{ cursor: "none" }}
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
         .font-doodle {
           font-family: 'Caveat', cursive;
         }
+        * { cursor: none !important; }
         :root {
           --background: ${currentTheme.bg} !important;
           --foreground: ${currentTheme.fg} !important;
@@ -725,11 +765,46 @@ export default function App() {
           --muted-foreground: ${currentTheme.bg}80 !important;
           --muted: ${currentTheme.bg}0a !important;
         }
+        /* Film grain overlay */
+        @keyframes grain {
+          0%, 100% { transform: translate(0, 0); }
+          10%       { transform: translate(-2%, -3%); }
+          20%       { transform: translate(3%, 2%); }
+          30%       { transform: translate(-1%, 4%); }
+          40%       { transform: translate(4%, -1%); }
+          50%       { transform: translate(-3%, 1%); }
+          60%       { transform: translate(2%, -4%); }
+          70%       { transform: translate(-4%, 2%); }
+          80%       { transform: translate(1%, -2%); }
+          90%       { transform: translate(-2%, 3%); }
+        }
+        .grain-overlay::before {
+          content: '';
+          position: fixed;
+          inset: -50%;
+          width: 200%;
+          height: 200%;
+          pointer-events: none;
+          z-index: 9990;
+          opacity: 0.028;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          animation: grain 0.18s steps(1) infinite;
+        }
       `}</style>
       <DitherFilter />
+
+      {/* ── Global overlays ────────────────────────────────────────────────── */}
+      <MagneticCursor />
+      <ScrollProgressBar progress={totalProgress} accentColor={currentTheme.accent} />
+
+      {/* Grain texture layer */}
+      <div className="grain-overlay fixed inset-0 pointer-events-none z-[9989]" aria-hidden="true" />
+
       <Ledger active={activeSection} themeIdx={themeIdx} setThemeIdx={setThemeIdx} />
 
-      <main className="flex flex-col w-full overflow-x-hidden">
+      <main
+        className="flex flex-col w-full overflow-x-hidden"
+      >
 
         {/* quick view ─────────────────────────────────────────────────── */}
         <div className="max-w-6xl w-full mx-auto px-4 md:px-8 pt-16 md:pt-20">
@@ -768,12 +843,21 @@ export default function App() {
                   [ FIELD NOTE / 001 ]
                 </div>
               </Reveal>
-              <Reveal delay={120}>
-                <h1 className="text-8xl md:text-[10rem] font-black tracking-tighter leading-none -ml-1 text-foreground">
+              <div style={{
+                opacity: 1,
+                transform: "none",
+                transition: "none",
+              }}>
+                <SplitHeading
+                  as="h1"
+                  delay={140}
+                  stagger={80}
+                  className="text-8xl md:text-[10rem] font-black tracking-tighter leading-none -ml-1 text-foreground"
+                >
                   TAN.
-                </h1>
-              </Reveal>
-              <Reveal delay={180}>
+                </SplitHeading>
+              </div>
+              <Reveal delay={220}>
                 <h2 className="text-xl md:text-2xl text-foreground font-bold tracking-tight uppercase mt-2">
                   Software Engineer & Game Developer
                 </h2>
@@ -850,9 +934,14 @@ export default function App() {
           <div id="RECORDS/002" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col gap-10">
           <div className="flex items-center gap-4">
             <FieldMark sectionId="002" externalFrame={fieldMarkScrollFrame("002")} />
-            <Reveal>
-              <h2 className="text-5xl md:text-6xl font-pixel tracking-widest uppercase">RECORDS</h2>
-            </Reveal>
+            <SplitHeading
+              as="h2"
+              delay={0}
+              stagger={60}
+              className="text-5xl md:text-6xl font-pixel tracking-widest uppercase"
+            >
+              RECORDS
+            </SplitHeading>
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">
             {certificatesData.map((cert, i) => {
@@ -945,12 +1034,15 @@ export default function App() {
           <div className="relative flex flex-row-reverse items-start gap-4 text-right border-b border-border pb-8 mb-8">
             <FieldMark sectionId="003" externalFrame={fieldMarkScrollFrame("003")} />
             <div className="flex-1">
-              <Reveal>
-                <h2 className="text-5xl md:text-6xl font-medium tracking-tight">
-                  BUILT / SELECTED WORK
-                </h2>
-              </Reveal>
-              <Reveal delay={60}>
+              <SplitHeading
+                as="h2"
+                delay={0}
+                stagger={55}
+                className="text-5xl md:text-6xl font-medium tracking-tight"
+              >
+                BUILT / SELECTED WORK
+              </SplitHeading>
+              <Reveal delay={280}>
                 <p className="text-muted-foreground text-sm mt-1">
                   "Things that started as problems, ideas, or experiments and became software."
                 </p>
@@ -1145,12 +1237,15 @@ export default function App() {
           <div className="flex items-start gap-4">
             <FieldMark sectionId="005" externalFrame={fieldMarkScrollFrame("005")} />
             <div>
-              <Reveal>
-                <h2 className="text-4xl md:text-5xl font-mono font-medium tracking-tight uppercase">
-                  LAB / EXPERIMENTS
-                </h2>
-              </Reveal>
-              <Reveal delay={50}>
+              <SplitHeading
+                as="h2"
+                delay={0}
+                stagger={65}
+                className="text-4xl md:text-5xl font-mono font-medium tracking-tight uppercase"
+              >
+                LAB / EXPERIMENTS
+              </SplitHeading>
+              <Reveal delay={320}>
                 <p className="font-mono text-sm opacity-70 mt-1">
                   "Not everything here is finished."
                 </p>
@@ -1252,9 +1347,14 @@ export default function App() {
           <div id="FIELD-HISTORY" className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col items-center text-center gap-10">
           <div className="flex flex-col items-center gap-4">
             <FieldMark sectionId="007" externalFrame={fieldMarkScrollFrame("007")} />
-            <Reveal>
-              <h2 className="text-5xl md:text-6xl font-medium tracking-tight uppercase">FIELD HISTORY</h2>
-            </Reveal>
+            <SplitHeading
+              as="h2"
+              delay={0}
+              stagger={70}
+              className="text-5xl md:text-6xl font-medium tracking-tight uppercase"
+            >
+              FIELD HISTORY
+            </SplitHeading>
           </div>
 
           {/* Self-drawing vertical timeline — scaleY bound to scroll progress through this section */}
@@ -1329,31 +1429,32 @@ export default function App() {
           <FieldMark sectionId="009" externalFrame={fieldMarkScrollFrame("009")} />
           <div>
             <div
-              className="font-pixel text-[9px] tracking-widest opacity-40 mb-3"
+              className="font-pixel text-[9px] tracking-widest mb-3"
               style={{
-                opacity: reduced ? 0.4 : Math.max(0.1, contactTextProgress * 0.4),
-                transform: reduced ? "none" : `translateY(${(1 - contactTextProgress) * 8}px)`,
-                transition: reduced ? "none" : "opacity 0.1s, transform 0.1s",
+                opacity: reduced ? 0.4 : Math.max(0.08, contactTextProgress * 0.5),
+                transform: reduced ? "none" : `translateY(${(1 - contactTextProgress) * 24}px)`,
+                transition: reduced ? "none" : "opacity 0.06s, transform 0.06s",
               }}
             >
               CONTACT / 009
             </div>
-            <h2
-              className="text-3xl md:text-5xl font-medium tracking-tight leading-tight mb-3"
+            {/* Dramatic character-by-character contact heading */}
+            <div
+              className="text-3xl md:text-6xl font-black tracking-tight leading-none mb-4 overflow-hidden"
               style={{
-                opacity: reduced ? 1 : Math.max(0, contactTextProgress * 1.5 - 0.2),
-                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, contactTextProgress * 1.5)) * 16}px)`,
-                transition: reduced ? "none" : "opacity 0.08s, transform 0.08s",
+                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, contactTextProgress * 1.4)) * 60}px)`,
+                opacity: reduced ? 1 : Math.min(1, contactTextProgress * 2),
+                transition: reduced ? "none" : "transform 0.08s cubic-bezier(0.16,1,0.3,1), opacity 0.07s ease",
               }}
             >
-              START A NEW FIELD NOTE.
-            </h2>
+              START A NEW<br />FIELD NOTE.
+            </div>
             <p
-              className="text-sm opacity-55"
+              className="text-sm"
               style={{
-                opacity: reduced ? 0.55 : Math.max(0, (contactTextProgress - 0.4) * 0.9),
-                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, Math.max(0, (contactTextProgress - 0.4) / 0.6))) * 12}px)`,
-                transition: reduced ? "none" : "opacity 0.08s, transform 0.08s",
+                opacity: reduced ? 0.55 : Math.max(0, (contactTextProgress - 0.45) * 1.2),
+                transform: reduced ? "none" : `translateY(${(1 - Math.min(1, Math.max(0, (contactTextProgress - 0.45) / 0.55))) * 20}px)`,
+                transition: reduced ? "none" : "opacity 0.06s, transform 0.06s",
               }}
             >"Have a problem worth exploring?"</p>
           </div>
