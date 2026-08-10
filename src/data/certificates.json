@@ -5,7 +5,7 @@
     "issuer": "TECHNO EXPO 2025",
     "year": "2025",
     "sig": 1,
-    "img": "public/4.png",
+    "img": "/4.png",
     "desc": "Received the Outstanding Presenter Award for exceptional presentation skills at the Techno Expo 2025."
   },
   {
@@ -14,7 +14,7 @@
     "issuer": "HUBSPOT ACADEMY",
     "year": "2026",
     "sig": 2,
-    "img": "public/5.png",
+    "img": "/5.png",
     "desc": "Mastered SEO strategies including keyword research, on-page optimization, and technical SEO to improve search engine rankings and drive organic traffic."
   },
   {
@@ -23,7 +23,7 @@
     "issuer": "CSS",
     "year": "2026",
     "sig": 3,
-    "img": "public/9.png",
+    "img": "/9.png",
     "desc": "Led peer coding sessions to help students with coding assignments and projects."
   }
 ]
