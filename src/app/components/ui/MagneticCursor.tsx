@@ -20,13 +20,13 @@ export const MagneticCursor: React.FC = () => {
   const [clicked, setClicked] = useState(false);
   const [hidden, setHidden] = useState(false);
 
-  // Fast snappy springs
-  const springX = useSpring(cursorX, { stiffness: 450, damping: 24, mass: 0.2 });
-  const springY = useSpring(cursorY, { stiffness: 450, damping: 24, mass: 0.2 });
+  // Smooth fluid springs (hovering card feel)
+  const springX = useSpring(cursorX, { stiffness: 220, damping: 26, mass: 0.5 });
+  const springY = useSpring(cursorY, { stiffness: 220, damping: 26, mass: 0.5 });
 
-  // Instant inner dot
-  const dotX = useSpring(cursorX, { stiffness: 1200, damping: 35 });
-  const dotY = useSpring(cursorY, { stiffness: 1200, damping: 35 });
+  // Smooth inner dot marker
+  const dotX = useSpring(cursorX, { stiffness: 380, damping: 28, mass: 0.2 });
+  const dotY = useSpring(cursorY, { stiffness: 380, damping: 28, mass: 0.2 });
 
   useEffect(() => {
     if (reduced || isTouchDevice) return;
@@ -92,14 +92,14 @@ export const MagneticCursor: React.FC = () => {
           boxShadow: "0 0 12px var(--accent)40",
         }}
         animate={{
-          width: clicked ? 18 : hovered ? 48 : 34,
-          height: clicked ? 18 : hovered ? 48 : 34,
+          width: clicked ? 18 : hovered ? 44 : 32,
+          height: clicked ? 18 : hovered ? 44 : 32,
           rotate: [0, 360],
         }}
         transition={{
-          width: { type: "spring", stiffness: 500, damping: 25 },
-          height: { type: "spring", stiffness: 500, damping: 25 },
-          rotate: { repeat: Infinity, duration: hovered ? 3 : 8, ease: "linear" },
+          width: { type: "spring", stiffness: 220, damping: 24 },
+          height: { type: "spring", stiffness: 220, damping: 24 },
+          rotate: { repeat: Infinity, duration: hovered ? 4 : 10, ease: "linear" },
         }}
       />
 
@@ -116,12 +116,13 @@ export const MagneticCursor: React.FC = () => {
             left: 0,
             pointerEvents: "none",
             zIndex: 9999,
-            width: 56,
-            height: 56,
+            width: 52,
+            height: 52,
           }}
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 0.8 }}
           exit={{ scale: 0, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 240, damping: 22 }}
         >
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-accent" />
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[2px] h-2.5 bg-accent" />
@@ -130,7 +131,7 @@ export const MagneticCursor: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Inner instant point marker with vibrant accent glow */}
+      {/* Inner point marker with vibrant accent glow */}
       <motion.div
         style={{
           x: dotX,
@@ -144,12 +145,12 @@ export const MagneticCursor: React.FC = () => {
           pointerEvents: "none",
           zIndex: 9999,
           opacity: hidden ? 0 : 1,
-          width: clicked ? 6 : hovered ? 8 : 4,
-          height: clicked ? 6 : hovered ? 8 : 4,
+          width: clicked ? 6 : hovered ? 7 : 4,
+          height: clicked ? 6 : hovered ? 7 : 4,
           backgroundColor: "var(--accent)",
           boxShadow: "0 0 10px var(--accent)",
         }}
-        transition={{ type: "spring", stiffness: 600, damping: 30 }}
+        transition={{ type: "spring", stiffness: 320, damping: 25 }}
       />
     </>
   );

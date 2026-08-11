@@ -715,12 +715,19 @@ export default function App() {
   const totalTrackWidth = certificatesData.length * cardWidth + Math.max(0, certificatesData.length - 1) * cardGap;
   const maxCertOffset = Math.max(0, totalTrackWidth - containerWidth);
 
-  // Handle certificates horizontal scroll carousel
+  // Handle certificates horizontal scroll carousel — smooth, slow, and scoped strictly to section visibility
   useEffect(() => {
     const delta = scrollY - prevScrollY.current;
     prevScrollY.current = scrollY;
-    if (Math.abs(delta) > 0.2) {
-      setCertOffset((prev) => Math.max(-maxCertOffset, Math.min(0, prev - delta * 0.95)));
+
+    if (!certContainerRef.current) return;
+    const rect = certContainerRef.current.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const isVisible = rect.top < vh + 100 && rect.bottom > -100;
+
+    if (isVisible && Math.abs(delta) > 0.1) {
+      // Smooth, slow translation multiplier (0.35 instead of 0.95)
+      setCertOffset((prev) => Math.max(-maxCertOffset, Math.min(0, prev - delta * 0.35)));
     }
   }, [scrollY, maxCertOffset]);
 
@@ -1118,8 +1125,10 @@ export default function App() {
                 ref={certTrackRef}
                 drag="x"
                 dragConstraints={{ left: -maxCertOffset, right: 0 }}
-                className="flex gap-8 w-max transition-transform duration-100 ease-out"
+                dragElastic={0.1}
+                className="flex gap-8 w-max"
                 animate={{ x: certOffset }}
+                transition={{ type: "spring", stiffness: 200, damping: 26, mass: 0.5 }}
                 onDragEnd={(_, info) => setCertOffset((prev) => Math.max(-maxCertOffset, Math.min(0, prev + info.offset.x)))}
               >
                 {certificatesData.map((cert: any, i: number) => {
@@ -1565,7 +1574,7 @@ export default function App() {
                 FIELD HISTORY
               </SplitHeading>
               {/* Unique Doodle Arrow 5: Magnetic Draggable Cards */}
-              <div className="flex items-center gap-2 text-accent font-doodle text-base font-bold pointer-events-none select-none mt-1">
+              <div className="hidden md:flex items-center gap-2 text-accent font-doodle text-base font-bold pointer-events-none select-none mt-1">
                 <span>grab &amp; toss cards around!</span>
                 <svg width="45" height="24" viewBox="0 0 45 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <path d="M 4,6 C 18,20 30,2 38,14" />
@@ -1584,7 +1593,7 @@ export default function App() {
                     dragSnapToOrigin
                     dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
                     whileDrag={{ scale: 1.06, cursor: "grabbing", zIndex: 50, boxShadow: "0 25px 35px rgba(0,0,0,0.3)" }}
-                    transition={{ type: "spring", stiffness: 450, damping: 20 }}
+                    transition={{ type: "spring", stiffness: 220, damping: 24 }}
                     className={`border border-border p-6 h-full flex flex-col gap-3 transition-all duration-300 hover:border-accent ${isMobile ? "cursor-default" : "cursor-grab active:cursor-grabbing"} bg-background rounded-md shadow-sm select-none ${hilite === job.id ? "border-accent bg-muted/20" : ""}`}
                   >
                     <div className="font-pixel text-[10px] tracking-widest text-muted-foreground flex justify-between items-center">

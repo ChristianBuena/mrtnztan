@@ -13,6 +13,13 @@ interface FadeProfileImageProps {
   heroDitherProgress?: number;
 }
 
+const isTouchDevice =
+  typeof window !== "undefined"
+    ? window.matchMedia("(pointer: coarse), (hover: none)").matches ||
+      "ontouchstart" in window ||
+      (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0)
+    : false;
+
 export const FadeProfileImage: React.FC<FadeProfileImageProps> = ({
   className = "",
   heroDitherProgress = 0,
@@ -21,13 +28,13 @@ export const FadeProfileImage: React.FC<FadeProfileImageProps> = ({
   const [prevIndex, setPrevIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
 
-  // Auto cycle profile images every 4.5 seconds
+  // Auto cycle profile images every 4 seconds automatically
   useEffect(() => {
     const interval = setInterval(() => {
       handleNext();
-    }, 4500);
+    }, 4000);
     return () => clearInterval(interval);
-  }, [currentIndex]);
+  }, [currentIndex, isFading]);
 
   const handleNext = () => {
     if (isFading) return;
@@ -45,11 +52,16 @@ export const FadeProfileImage: React.FC<FadeProfileImageProps> = ({
       ? `url(#dither) contrast(${1 + heroDitherProgress * 0.25}) brightness(${1 - heroDitherProgress * 0.12})`
       : undefined;
 
+  const handleClick = () => {
+    if (isTouchDevice) return; // Automatic on mobile, no tap needed!
+    handleNext();
+  };
+
   return (
     <div
-      className={`relative overflow-hidden group cursor-pointer bg-neutral-900 aspect-[4/5] ${className}`}
-      onClick={handleNext}
-      title="Click to cycle profile photo"
+      className={`relative overflow-hidden group bg-neutral-900 aspect-[4/5] ${isTouchDevice ? "cursor-default" : "cursor-pointer"} ${className}`}
+      onClick={handleClick}
+      title={isTouchDevice ? "Auto-cycling profile photo" : "Click to cycle profile photo"}
     >
       {/* Base Layer: Previous photo (underneath, 100% visible, no white background bleed) */}
       <img
