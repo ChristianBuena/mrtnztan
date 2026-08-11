@@ -50,9 +50,10 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
     );
     camera.position.z = 1;
 
-    // ── denser point grid (was 50×30, now 80×45) ──────────────────────────────
-    const COLS = 80;
-    const ROWS = 45;
+    // ── point grid (adaptive for mobile performance) ──────────────────────
+    const isMobileScreen = window.innerWidth < 768;
+    const COLS = isMobileScreen ? 45 : 80;
+    const ROWS = isMobileScreen ? 25 : 45;
     const COUNT = COLS * ROWS;
 
     const positions = new Float32Array(COUNT * 3);
@@ -86,7 +87,7 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
 
     const material = new THREE.PointsMaterial({
       color: getColor(),
-      size: 2.5,
+      size: isMobileScreen ? 2.0 : 2.5,
       sizeAttenuation: false,
       transparent: true,
       opacity: dark ? 0.10 : 0.065,
@@ -105,7 +106,16 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
     };
     window.addEventListener("mousemove", onMouse, { passive: true });
 
-    // ── resize ────────────────────────────────────────────────────────────────
+    // ── resize & visibility ───────────────────────────────────────────────────
+    let isVisible = true;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+      },
+      { threshold: 0.01 }
+    );
+    io.observe(mount);
+
     const ro = new ResizeObserver(() => {
       if (!mount) return;
       renderer.setSize(mount.clientWidth, mount.clientHeight);
@@ -121,6 +131,7 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
         material.dispose();
         mount.removeChild(renderer.domElement);
         ro.disconnect();
+        io.disconnect();
         window.removeEventListener("mousemove", onMouse);
       };
     }
@@ -133,6 +144,8 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
 
     const animate = () => {
       rafId = requestAnimationFrame(animate);
+      if (!isVisible) return; // Pause when out of view
+
       const now = performance.now();
       const t = (now - t0) / 1000;
       const { scrollVelocity: vel, scrollProgress: sp } = stateRef.current;
@@ -184,7 +197,7 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
       pos.needsUpdate = true;
 
       // Point size: more dynamic range with velocity
-      material.size = Math.max(1.2, 2.5 + smoothVel * 0.05);
+      material.size = Math.max(1.2, (isMobileScreen ? 2.0 : 2.5) + smoothVel * 0.05);
       // Opacity also pulses slightly with velocity
       material.opacity = dark
         ? Math.min(0.22, 0.10 + smoothVel * 0.003)
@@ -207,6 +220,7 @@ const ThreeWaveField: React.FC<ThreeWaveFieldProps> = ({
         mount.removeChild(renderer.domElement);
       }
       ro.disconnect();
+      io.disconnect();
       window.removeEventListener("mousemove", onMouse);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -6,6 +6,13 @@ const reduced =
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
 
+const isTouchDevice =
+  typeof window !== "undefined"
+    ? window.matchMedia("(pointer: coarse), (hover: none)").matches ||
+      "ontouchstart" in window ||
+      (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0)
+    : false;
+
 export const MagneticCursor: React.FC = () => {
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
@@ -22,7 +29,7 @@ export const MagneticCursor: React.FC = () => {
   const dotY = useSpring(cursorY, { stiffness: 1200, damping: 35 });
 
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || isTouchDevice) return;
 
     const move = (e: MouseEvent) => {
       cursorX.set(e.clientX);
@@ -63,7 +70,7 @@ export const MagneticCursor: React.FC = () => {
     };
   }, []);
 
-  if (reduced) return null;
+  if (reduced || isTouchDevice) return null;
 
   return (
     <>
